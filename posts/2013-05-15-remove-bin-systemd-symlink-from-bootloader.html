@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="viewport" content="width=device-width" />
+
+        <title>Ian Weatherhogg - root device mounted successfully but /bin/systemd does not exist</title>
+
+        <!-- Stylesheets. -->
+        <link rel="stylesheet" type="text/css" href="../css/base.css" />
+        <link rel="stylesheet" type="text/css" href="../css/layout.css" />
+        <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
+
+        <!-- RSS. -->
+        <link rel="alternate" type="application/rss+xml" title="Ian Weatherhogg - a personal blog" href="http://ianweatherhogg.com/rss.xml" />
+
+        <!-- Metadata. -->
+        <meta name="keywords" content="Ian Weatherhogg,blog,programming,coding,personal,homepage" />
+        <meta name="description" content="Personal home page and blog of Ian Weatherhogg." />
+    </head>
+    <body>
+        <div id="navigation">
+            <h1>Blog</h1>
+            <a href="../">Home</a>
+            <a href="../archive.html">Archive</a>
+            <a href="../contact.html">Contact</a>
+            <h1>Links</h1>
+            <a href="https://github.com/ianweatherhogg">GitHub</a>
+            <a href="https://twitter.com/ianweatherhogg">Twitter</a>
+        </div>
+
+        <div id="content">
+            <h1>root device mounted successfully but /bin/systemd does not exist</h1>
+<div class="soft">
+    Posted in: archlinux systemd grub.
+</div>
+
+<h1 id="problem">Problem</h1>
+<p>I’ve been using archlinux without issue for well over a year but a recent system upgrade, via pacman, caused boot failure and dropped in to rootfs with messages similar to:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash"><span class="kw">mount</span> /dev/mapper/lvmgroup-archroot on real root
+<span class="kw">running</span> cleanup hook [lvm2]
+<span class="kw">running</span> cleanup hook [udev]
+<span class="kw">ERROR</span> - root device mounted successfully but /bin/systemd does not exist
+<span class="kw">bailing</span> out, you are on your own. Good Luck</code></pre>
+<h1 id="solution">Solution</h1>
+<p>Remove <code>init</code> parameter in grub (<code>/boot/grub/grub.cfg</code>) which references systemd.</p>
+<p>Before:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash"><span class="kw">linux</span>   /vmlinuz-linux root=/dev/mapper/lvmgroup-archroot ro cryptdevice=/dev/md0:lvmgroup resume=/dev/mapper/lvmgroup-swap init=/bin/systemd</code></pre>
+<p>After:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash"><span class="kw">linux</span>   /vmlinuz-linux root=/dev/mapper/lvmgroup-archroot ro cryptdevice=/dev/md0:lvmgroup resume=/dev/mapper/lvmgroup-swap</code></pre>
+<h1 id="details">Details</h1>
+<p>Logs are your friend with the pacman log <code>/var/log/pacman.log</code> giving the necessary details post system update:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash">[<span class="kw">2013-05-12</span> 22:45] [PACMAN] upgraded linux (3.8.11-1 -<span class="kw">&gt;</span> 3.9.2-1)
+[<span class="kw">2013-05-12</span> 22:45] [ALPM-SCRIPTLET] ==<span class="kw">&gt;</span> The /bin/systemd symlink has been removed. Any references in your
+[<span class="kw">2013-05-12</span> 22:45] [ALPM-SCRIPTLET]     bootloader (or elsewhere) <span class="kw">must</span> be updated to /usr/lib/systemd/systemd.
+[<span class="kw">2013-05-12</span> 22:45] [PACMAN] upgraded systemd (203-2 -<span class="kw">&gt;</span> 204-1)
+[<span class="kw">2013-05-12</span> 22:45] [PACMAN] upgraded systemd-sysvcompat (203-2 -<span class="kw">&gt;</span> 204-1)</code></pre>
+<p>The <code>GRUB_CMDLINE_LINUX_DEFAULT</code> variable in <code>/etc/default/grub</code> was updated to remove the <code>init</code> flag:</p>
+<p>Before:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash"><span class="ot">GRUB_CMDLINE_LINUX_DEFAULT=</span><span class="st">&quot;resume=/dev/mapper/lvmgroup-swap&quot;</span> <span class="ot">init=</span>/bin/systemd</code></pre>
+<p>After:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash"><span class="ot">GRUB_CMDLINE_LINUX_DEFAULT=</span><span class="st">&quot;resume=/dev/mapper/lvmgroup-swap&quot;</span></code></pre>
+<p>Regenerate grub (<code>/boot/grub/grub.cfg</code>):</p>
+<pre class="sourceCode bash"><code class="sourceCode bash"><span class="kw">sudo</span> grub-mkconfig -o /boot/grub/grub.cfg</code></pre>
+<p>Reboot!</p>
+<h1 id="background">Background</h1>
+<p><code>init</code> switch was orginally included in grub (<code>/boot/grub/grub.cfg</code>) when systemd was preferred (over the former SysVinit <a href="https://wiki.archlinux.org/index.php/Arch_Boot_Process">“Archlinux Boot Process Wiki”</a>), as orginally suggested in <a href="https://wiki.archlinux.org/index.php/GRUB2">“Archlinux Grub2 Wiki”</a> (but no longer referenced since the information is no longer current).</p>
+<p>I have two hard drives <code>/dev/sda</code> and <code>/dev/sdb</code> configured for raid with the largest partition encrypted via <strong>luks</strong> and configured with <strong>lvm</strong> which itself is partitioned for root and home. This is much the same way as described by <a href="http://jasonwryan.com/blog/2012/02/11/lvm/">“Jason Ryan lvm luks raid”</a>.</p>
+<p>The following gives a flavour of disk partitioning at the time of the original archlinux installation (gdisk):</p>
+<pre class="sourceCode bash"><code class="sourceCode bash"><span class="kw">1</span> 50M BIOS boot partition --maps to-- (/dev/sd[ab]1) <span class="kw">--no</span> raid--
+<span class="kw">2</span> 500M boot Linux Raid --maps to-- (/dev/sd[ab]2) <span class="kw">--and</span> to-- (/dev/md1)
+<span class="kw">3</span> REST lvm Linux Raid --maps to-- (/dev/sd[ab]3) <span class="kw">--and</span> to-- (/dev/md0)</code></pre>
+<p><code>/dev/sd[ab]2</code> and <code>/dev/sd[ab]3</code> are both configured for raid:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash"><span class="kw">mdadm</span> --create /dev/md0 --level=1 --raid-devices=2 /dev/sd[ab]3
+<span class="kw">mdadm</span> --create /dev/md1 --level=1 --raid-devices=2 /dev/sd[ab]2</code></pre>
+<p>but it is only <code>/dev/sd[ab]3</code> which is encrypted via <strong>luks</strong> and configured for <strong>lvm</strong> with partitions for root, swap and home.</p>
+<p>The following summaries:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash"><span class="kw">root</span> /dev/mapper/lvmgroup-archroot
+<span class="kw">home</span> /dev/mapper/lvmgroup-archhome
+<span class="kw">boot</span> /dev/md1</code></pre>
+<p>or:</p>
+<pre class="terminal">
+<span id="prompt">prompt</span> &gt; df -h
+
+Filesystem                     Size  Used Avail Use% Mounted on
+/dev/mapper/lvmgroup-archroot   20G   17G  2.6G  87% /
+dev                            1.5G     0  1.5G   0% /dev
+run                            1.5G  9.1M  1.5G   1% /run
+tmpfs                          1.5G  2.1M  1.5G   1% /dev/shm
+tmpfs                          1.5G     0  1.5G   0% /sys/fs/cgroup
+tmpfs                          1.5G  3.4M  1.5G   1% /tmp
+/dev/md1                       484M   37M  423M   9% /boot
+/dev/mapper/lvmgroup-archhome  558G  208G  323G  40% /home
+</pre>
+
+<h2 id="recovery-details">Recovery Details</h2>
+<p>To make the necessary updates to grub (<code>/boot/grub/grub.cfg</code>) and be able to complete the boot process, get a recovery ‘disk’/bootable ISO (on a USB), interrupt bios boot (F12 on my Dell), boot from external USB media until the recovery shell emerges.</p>
+<p>De-crypt <code>/dev/sda3</code> with <strong>luks</strong> (enter password when prompted):</p>
+<pre class="sourceCode bash"><code class="sourceCode bash"><span class="kw">cryptsetup</span> luksOpen /dev/sda3 lvm</code></pre>
+<p>Verify and activate the <strong>lvm</strong> partitions:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash"><span class="kw">lvm</span> lvscan
+<span class="kw">vgchange</span> -ay lvmgroup</code></pre>
+<p>mount and chroot:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash"><span class="kw">mount</span> /dev/mapper/lvmgroup-archroot /mnt
+<span class="kw">mount</span> /dev/mapper/lvmgroup-archhome /mnt/home
+<span class="kw">mount</span> /dev/md1 /mnt/boot
+<span class="kw">chroot</span> /mnt</code></pre>
+<p>Complete the updates described in the solution above, umount and reboot.</p>
+<h1 id="aside">Aside</h1>
+<p>If you have followed the above instruction but failed to install systemd-sysvcompat then you will get an error typically:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash"><span class="kw">WARNING</span>: Failed to connect to lvmetad: No such file or directory. Falling back to internal scanning</code></pre>
+<p>When I experienced this issue, no systemd services started and I was dropped into the (virtual) console. Install systemd-sysvcompat as recommended to correct the error.</p>
+<h1 id="acknowledgements">Acknowledgements</h1>
+<p>The above information mirrors this post by <a href="http://gaijin-nippon.blogspot.co.uk/2013/05/heed-this-warning-about-binsystemd.html">“Gaijin Nippon”</a> which I stumbled upon as I got half way through writing this contribution.</p>
+
+<h2>Comments</h2>
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+
+  var disqus_shortname = 'ianweatherhogg'; // required: replace example with your forum shortname
+
+  /* * * DON'T EDIT BELOW THIS LINE * * */
+  (function() {
+  var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+  dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+    
+
+
+            <div style="clear: both"></div>
+
+            <div id="footer">
+                Site proudly generated by
+                <a href="http://jaspervdj.be/hakyll">Hakyll</a>.
+                The entire source code of this website is
+                <a href="http://github.com/ianweatherhogg/github.ianweatherhogg.com ">
+                available at github</a>.
+            </div>
+        </div>
+
+
+        <!-- Google Analytics -->
+        <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+        </script>
+        <script type="text/javascript">
+            try {
+                var pageTracker = _gat._getTracker("UA-11993001-1");
+                pageTracker._trackPageview();
+            } catch(err) {}
+        </script>
+    </body>
+</html>
