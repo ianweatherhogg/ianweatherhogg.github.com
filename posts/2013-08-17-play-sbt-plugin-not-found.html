@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="viewport" content="width=device-width" />
+
+        <title>Ian Weatherhogg - unresolved dependencies for sbt-plugin 2.0</title>
+
+        <!-- Stylesheets. -->
+        <link rel="stylesheet" type="text/css" href="../css/base.css" />
+        <link rel="stylesheet" type="text/css" href="../css/layout.css" />
+        <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
+
+        <!-- RSS. -->
+        <link rel="alternate" type="application/rss+xml" title="Ian Weatherhogg - a personal blog" href="http://ianweatherhogg.com/rss.xml" />
+
+        <!-- Metadata. -->
+        <meta name="keywords" content="Ian Weatherhogg,blog,programming,coding,personal,homepage" />
+        <meta name="description" content="Personal home page and blog of Ian Weatherhogg." />
+    </head>
+    <body>
+        <div id="navigation">
+            <h1>Blog</h1>
+            <a href="../">Home</a>
+            <a href="../archive.html">Archive</a>
+            <a href="../contact.html">Contact</a>
+            <h1>Links</h1>
+            <a href="https://github.com/ianweatherhogg">GitHub</a>
+            <a href="https://twitter.com/ianweatherhogg">Twitter</a>
+        </div>
+
+        <div id="content">
+            <h1>unresolved dependencies for sbt-plugin 2.0</h1>
+<div class="soft">
+    Posted in: play sbt plugin scala.
+</div>
+
+<h1 id="problem">Problem</h1>
+<p>I took a look at some of the samples included with the playframework source code. Whilst building the <a href="https://github.com/playframework/playframework/tree/master/samples/workinprogress/twitterstream">Play Twitter Stream Sample</a>, dependency errors resulted. <code>sbt</code> throws up the following unresolved dependency error trace whilst searching for the play sbt plugin:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash">[<span class="kw">warn</span>] ==== Typesafe repository: tried
+[<span class="kw">warn</span>]   http://repo.typesafe.com/typesafe/releases/com/typesafe/play/sbt-plugin_2.10_0.13/2.0/sbt-plugin-2.0.pom
+[<span class="kw">warn</span>] 	::::::::::::::::::::::::::::::::::::::::::::::
+[<span class="kw">warn</span>] 	::          UNRESOLVED DEPENDENCIES         ::
+[<span class="kw">warn</span>] 	::::::::::::::::::::::::::::::::::::::::::::::
+[<span class="kw">warn</span>] 	:: com.typesafe.play#sbt-plugin<span class="kw">;2.0</span>: not found
+[<span class="kw">warn</span>] 	::::::::::::::::::::::::::::::::::::::::::::::
+[<span class="kw">warn</span>] 
+[<span class="kw">warn</span>] 	Note: Some unresolved dependencies have extra attributes.  Check that these dependencies exist with the requested attributes.
+[<span class="kw">warn</span>] 		com.typesafe.play:sbt-plugin:2.0 (sbtVersion=0.13, scalaVersion=2.10)
+[<span class="kw">warn</span>] 
+<span class="kw">sbt.ResolveException</span>: unresolved dependency: com.typesafe.play#sbt-plugin<span class="kw">;2.0</span>: not found
+	<span class="kw">at</span> sbt.IvyActions$.sbt<span class="ot">$IvyActions$$</span>resolve(IvyActions.scala:213)
+	<span class="kw">at</span> sbt.IvyActions<span class="ot">$$</span>anonfun<span class="ot">$update$1</span>.apply(IvyActions.scala:122)</code></pre>
+<h1 id="solution">Solution</h1>
+<h2 id="adjust-for-a-known-version-which-exists">Adjust for a known version which exists</h2>
+<p>Specify the exact milestone realease in the <code>plugins.sbt</code> file</p>
+<p>Before:</p>
+<pre class="sourceCode scala"><code class="sourceCode scala"><span class="fu">addSbtPlugin</span>(<span class="st">&quot;com.typesafe.play&quot;</span> % <span class="st">&quot;sbt-plugin&quot;</span> % Option(System.<span class="fu">getProperty</span>(<span class="st">&quot;play.version&quot;</span>)).<span class="fu">getOrElse</span>(<span class="st">&quot;2.0&quot;</span>))</code></pre>
+<p>After:</p>
+<pre class="sourceCode scala"><code class="sourceCode scala"><span class="fu">addSbtPlugin</span>(<span class="st">&quot;com.typesafe.play&quot;</span> % <span class="st">&quot;sbt-plugin&quot;</span> % <span class="st">&quot;2.2.0-M2&quot;</span>)</code></pre>
+<h2 id="alternatively-pass-in-the-play-version-via-command-line-optionssystem-properties">Alternatively, pass in the play version via command line options/system properties</h2>
+<p>Specify the play.version on the command line when invoking <code>sbt</code>:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash"><span class="kw">sbt13RC4</span> -Dplay.version=<span class="st">&quot;2.2.0-M2&quot;</span></code></pre>
+<h1 id="details">Details</h1>
+<h2 id="plugin-version">Plugin Version</h2>
+<p>The <a href="https://github.com/playframework/playframework/tree/master/samples/workinprogress/twitterstream">Play Twitter Stream Sample</a>, uses <code>sbt</code> version 0.13 (<code>sbt</code> being compiled with <code>scala</code> version 2.10) The <code>play</code> <code>sbt</code> plugin which matches this versioning is searched for at the <a href="http://repo.typesafe.com/typesafe/releases/com.typesafe.play/sbt-plugin/scala_2.10/sbt_0.13/">Typesafe Releases Repo</a>. The most current match is versioned at “2.2.0-M2” (along with an older “2.0.6” version).</p>
+<p>It would appear that <code>getOrElse(&quot;2.0&quot;)</code> doesn’t ‘glob’ the “2.0.6”, so I had to hard code the “2.2.0-M2” version.</p>
+<p>An example of hard coding the milestone realease is demonstrated in the <a href="https://github.com/kaeawc/play-cake-pattern/blob/master/project/plugins.sbt">Play Cake Pattern</a> project repo.</p>
+<h2 id="system-properties-via-command-line-args">System Properties via Command Line Args</h2>
+<p>System properties can be passed to <code>sbt</code> at the command line via the <code>-D</code> switch. Correctly setting the <code>play.version</code> resolves the dependency issue.</p>
+<p>I found it of benefit to go through some <code>sbt</code> scripts to get a better understanding of this, typically:</p>
+<ul>
+<li><a href="https://github.com/playframework/playframework/blob/master/play">Play play script</a></li>
+<li><a href="https://github.com/playframework/playframework/blob/master/framework/build">Play build script</a></li>
+<li><a href="https://github.com/paulp/sbt-extras/blob/master/sbt">sbt extras script</a></li>
+<li>system install of <code>sbt</code> found at <code>/bin/sbt</code> (system version currently “0.12.4” on my archlinux distro)</li>
+</ul>
+<h2 id="sbtopts">sbtopts</h2>
+<p>A corollary to reading the above scripts is the discovery that command line arguments can be included in a <code>.sbtopts</code> file. This is usually placed at the root of the project (system wide <code>/etc/sbt/sbtops</code> checked first). The dependency issue can be resolved by including in the file:</p>
+<pre><code>-Dplay.version=2.2.0-M2</code></pre>
+<p>Note the absence of quotes around the version number</p>
+<p>My system <code>sbt</code> script (version “0.12.4”) checks for <code>sbtopts</code>, but the <code>sbt13RC4</code> is a simple bash script calling the sbt launcher (version 0.13 release canditate 4) and does not check for <code>sbtopts</code>.</p>
+<p>As a consquence it is untested with <code>sbt13RC4</code> but I did verify it’s functionality with <code>sbt</code> version “0.12” (via an archived version of the play twitter example where the desired <code>play</code> <code>sbt</code> plugin could once again not be found <a href="http://repo.typesafe.com/typesafe/ivy-releases/play/sbt-plugin/scala_2.9.2/sbt_0.12/">Typesafe Releases Repo Sbt 0.12</a>)</p>
+<h2 id="snapshot-not-found">SNAPSHOT not found</h2>
+<p>I also took a look at the <a href="https://github.com/playframework/playframework/tree/master/framework/src/sbt-plugin/src/sbt-test/play-sbt-plugin">Play sbt-plugin examples</a> projects. These had similiar issues with being unable to find SNAPSHOT versions for the <code>play</code> sbt-plugin:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash">[<span class="kw">info</span>] Loading global plugins from /home/ian/.sbt/0.13/plugins
+[<span class="kw">info</span>] Loading project definition from /home/ian/Code/scala/github/playframework/playframework/framework/src/sbt-plugin/src/sbt-test/play-sbt-plugin/distribution/project
+[<span class="kw">warn</span>] 	module not found: com.typesafe.play#sbt-plugin<span class="kw">;2.2-SNAPSHOT</span>
+[<span class="kw">warn</span>] ==== typesafe-ivy-releases: tried
+[<span class="kw">warn</span>]   http://repo.typesafe.com/typesafe/ivy-releases/com.typesafe.play/sbt-plugin/scala_2.10/sbt_0.13/2.2-SNAPSHOT/ivys/ivy.xml
+[<span class="kw">warn</span>] ==== sbt-plugin-releases: tried
+[<span class="kw">warn</span>]   http://scalasbt.artifactoryonline.com/scalasbt/sbt-plugin-releases/com.typesafe.play/sbt-plugin/scala_2.10/sbt_0.13/2.2-SNAPSHOT/ivys/ivy.xml
+[<span class="kw">warn</span>] ==== local: tried
+[<span class="kw">warn</span>]   /home/ian/.ivy2/local/com.typesafe.play/sbt-plugin/scala_2.10/sbt_0.13/2.2-SNAPSHOT/ivys/ivy.xml
+[<span class="kw">warn</span>] ==== public: tried
+[<span class="kw">warn</span>]   http://repo1.maven.org/maven2/com/typesafe/play/sbt-plugin_2.10_0.13/2.2-SNAPSHOT/sbt-plugin-2.2-SNAPSHOT.pom
+[<span class="kw">warn</span>] ==== Typesafe repository: tried
+[<span class="kw">warn</span>]   http://repo.typesafe.com/typesafe/releases/com/typesafe/play/sbt-plugin_2.10_0.13/2.2-SNAPSHOT/sbt-plugin-2.2-SNAPSHOT.pom
+[<span class="kw">warn</span>] ==== Sonatype snapshots: tried
+[<span class="kw">warn</span>]   http://oss.sonatype.org/content/repositories/snapshots/com/typesafe/play/sbt-plugin_2.10_0.13/2.2-SNAPSHOT/sbt-plugin-2.2-SNAPSHOT.pom
+[<span class="kw">warn</span>] 	::::::::::::::::::::::::::::::::::::::::::::::
+[<span class="kw">warn</span>] 	::          UNRESOLVED DEPENDENCIES         ::
+[<span class="kw">warn</span>] 	::::::::::::::::::::::::::::::::::::::::::::::
+[<span class="kw">warn</span>] 	:: com.typesafe.play#sbt-plugin<span class="kw">;2.2-SNAPSHOT</span>: not found
+[<span class="kw">warn</span>] 	::::::::::::::::::::::::::::::::::::::::::::::
+[<span class="kw">warn</span>] 
+[<span class="kw">warn</span>] 	Note: Some unresolved dependencies have extra attributes.  Check that these dependencies exist with the requested attributes.
+[<span class="kw">warn</span>] 		com.typesafe.play:sbt-plugin:2.2-SNAPSHOT (sbtVersion=0.13, scalaVersion=2.10)
+[<span class="kw">warn</span>] 
+<span class="kw">sbt.ResolveException</span>: unresolved dependency: com.typesafe.play#sbt-plugin<span class="kw">;2.2-SNAPSHOT</span>: not found
+	<span class="kw">at</span> sbt.IvyActions$.sbt<span class="ot">$IvyActions$$</span>resolve(IvyActions.scala:213)
+	<span class="kw">at</span> sbt.IvyActions<span class="ot">$$</span>anonfun<span class="ot">$update$1</span>.apply(IvyActions.scala:122)
+	<span class="kw">at</span> sbt.IvyActions<span class="ot">$$</span>anonfun<span class="ot">$update$1</span>.apply(IvyActions.scala:121)</code></pre>
+<p>Once again, <code>sbt</code> version 0.13 is being used (which is built against <code>scala</code> version 2.10)</p>
+<p>My initial take would be that if I build and publish from source (<code>publish-local</code>) then the SNAPSHOT versions would be included in my local ivy cache as described in the <a href="http://www.playframework.com/documentation/2.1.x/BuildingFromSource">Play build from source</a> documentation.</p>
+<p>This turned out not to be the case, and infact the <code>publish-local</code> command, publishes to the <code>repository</code> directory at the root of the playframework source code checkout.</p>
+<p>This becomes evident on analyis of the <a href="https://github.com/playframework/playframework/blob/master/play">Play play script</a>. The key point is the <code>-D</code> switch, <code>sbt.boot.properties</code>, which points to launcher file <a href="https://github.com/playframework/playframework/blob/master/framework/sbt/sbt.boot.properties">Play sbt boot properties</a>, whereupon the area of interest are the ivy settings, in particular, <code>ivy-home</code>:</p>
+<pre><code>[ivy]
+  ivy-home: ${sbt.ivy.home-${play.home}/../repository}</code></pre>
+<p>Thus, if this parameter is fed in at the command line <code>-D</code> switch, in one of the <a href="https://github.com/playframework/playframework/tree/master/framework/src/sbt-plugin/src/sbt-test/play-sbt-plugin">Play sbt-plugin examples</a> projects, the play sbt SNAPSHOT dependency should be picked up and resolve the issue. Typically:</p>
+<pre class="sourceCode bash"><code class="sourceCode bash"><span class="kw">sbt13RC4</span> -Dsbt.ivy.home=<span class="st">'/home/ian/Code/scala/github/playframework/playframework/repository'</span></code></pre>
+<p>Note, the switch is <code>sbt.ivy.home</code>. This <a href="http://stackoverflow.com/questions/6780828/what-is-the-equivalent-of-sbt-boot-properties-in-sbt-0-10-x">Stackoverflow sbt.boot.properties</a> question helped me out here.</p>
+<h1 id="references">References</h1>
+
+<h2>Comments</h2>
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+
+  var disqus_shortname = 'ianweatherhogg'; // required: replace example with your forum shortname
+
+  /* * * DON'T EDIT BELOW THIS LINE * * */
+  (function() {
+  var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+  dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+    
+
+
+            <div style="clear: both"></div>
+
+            <div id="footer">
+                Site proudly generated by
+                <a href="http://jaspervdj.be/hakyll">Hakyll</a>.
+                The entire source code of this website is
+                <a href="http://github.com/ianweatherhogg/ianweatherhogg.github.com ">
+                available at github</a>.
+            </div>
+        </div>
+
+
+        <!-- Google Analytics -->
+        <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+        </script>
+        <script type="text/javascript">
+            try {
+                var pageTracker = _gat._getTracker("UA-11993001-1");
+                pageTracker._trackPageview();
+            } catch(err) {}
+        </script>
+    </body>
+</html>
